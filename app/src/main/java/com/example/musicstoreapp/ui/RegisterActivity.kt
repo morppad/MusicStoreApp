@@ -3,12 +3,9 @@ package com.example.musicstoreapp.ui
 import android.os.Bundle
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import com.example.musicstoreapp.data.DatabaseConnection
 import com.example.musicstoreapp.databinding.ActivityRegisterBinding
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import com.example.musicstoreapp.model.User
+import com.example.musicstoreapp.repository.UserRepository
 
 class RegisterActivity : AppCompatActivity() {
 
@@ -23,43 +20,35 @@ class RegisterActivity : AppCompatActivity() {
             val name = binding.inputName.text.toString()
             val email = binding.inputEmail.text.toString()
             val password = binding.inputPassword.text.toString()
+            val phone = binding.inputPhone.text.toString()
+            val address = binding.inputAddress.text.toString()
 
-            if (name.isNotEmpty() && email.isNotEmpty() && password.isNotEmpty()) {
-                registerUser(name, email, password)
+            if (name.isEmpty() || email.isEmpty() || password.isEmpty() || phone.isEmpty() || address.isEmpty()) {
+                Toast.makeText(this, "All fields are required", Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Please fill all fields", Toast.LENGTH_SHORT).show()
+                val user = User(
+                    name = name,
+                    email = email,
+                    phone = phone,
+                    address = address,
+                    role = "customer", // Роль по умолчанию
+                    password = password
+                )
+                registerUser(user)
             }
         }
     }
 
-    private fun registerUser(name: String, email: String, password: String) {
-        GlobalScope.launch(Dispatchers.IO) {
-            val connection = DatabaseConnection.getConnection()
-            val query = "INSERT INTO users (name, email, password) VALUES (?, ?, ?)"
-            try {
-                val statement = connection?.prepareStatement(query)
-                statement?.setString(1, name)
-                statement?.setString(2, email)
-                statement?.setString(3, password)
-                val rowsInserted = statement?.executeUpdate()
-                if (rowsInserted != null && rowsInserted > 0) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@RegisterActivity, "Registration successful", Toast.LENGTH_SHORT).show()
-                    }
-                } else {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@RegisterActivity, "Registration failed", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@RegisterActivity, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
-                }
-            } finally {
-                connection?.close()
+    private fun registerUser(user: User) {
+        UserRepository.registerUser(
+            user,
+            onSuccess = {
+                Toast.makeText(this, "Registration successful!", Toast.LENGTH_SHORT).show()
+                finish()
+            },
+            onError = { errorMessage ->
+                Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show()
             }
-        }
+        )
     }
 }
-
